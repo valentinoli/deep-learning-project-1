@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 from network_helpers import block_cnn, block_digit_classifier, block_output
 
 class NaiveCNN(nn.Module):
