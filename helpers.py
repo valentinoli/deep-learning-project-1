@@ -92,6 +92,7 @@ def compute_accuracy(model: nn.Module, inputs: Tensor, targets: Tensor):
     accuracy = num_correct / len(targets)
     return accuracy, num_errors
 
+
 def k_fold_split(inputs: Tensors, folds: int = 4):
     """
     :param inputs: input tensor of dimension (N, 2, 14, 14), N is the number of pairs
@@ -122,6 +123,7 @@ def k_fold_split(inputs: Tensors, folds: int = 4):
     #return kfold_train_dict, kfold_validation_dict
 
     return kfold_train, kfold_valid
+
 
 def grid_search(
     model: nn.Module,
