@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from network_helpers import block_cnn, block_digit_classifier, block_output
+from network_helpers import block_cnn, block_digit_classifier, block_output, leq
 
 class NaiveNet(nn.Module):
     """Naive implementation without shared weights"""
@@ -52,4 +52,27 @@ class SharedWeightNet(nn.Module):
         
         # Computes the final output by concatenating the intermediate outputs of each pair 
         output = self.out(torch.cat((output1, output2), 1))
+        return output, output1, output2
+
+class BenchmarkNet(nn.Module):
+    """Network with shared weights with simple boolean operator for output prediction"""
+    def __init__(self, hidden_layers: int = 2):
+        super().__init__()
+        self.cnn = block_cnn()
+        
+        # shared weight block
+        self.dc = block_digit_classifier(hidden_layers)
+        
+    def forward_one(self, x):
+        """Forwards the one image of each pair through the CNN and classification blocks"""
+        return self.dc(self.cnn(x).flatten(1))
+    
+    def forward(self, input_):
+        """Forward pass of the input batch of image pairs"""
+        # Call the first two blocks on both images
+        output1 = self.forward_one(input_.select(1, 0).unsqueeze(1))
+        output2 = self.forward_one(input_.select(1, 1).unsqueeze(1))
+        
+        # Computes the final output by concatenating the intermediate outputs of each pair 
+        output = leq(output1.argmax(1), output2.argmax(1))
         return output, output1, output2

@@ -1,4 +1,4 @@
-from torch import nn
+from torch import nn, tensor, float
 
 """Layer helpers"""
 def conv(in_channels, out_channels, kernel_size = 3, padding = 1):
@@ -18,6 +18,11 @@ def softmax(dim = 1):
 
 def sequential(*modules):
     return nn.Sequential(*modules)
+
+def leq(x,y):
+    #mimick prob. distribution for training
+    output = [[0,1] if (x_ <= y_ ) else [1,0] for x_, y_ in zip(x,y)]
+    return tensor(output, dtype=float)
 
 
 """Block helpers"""
