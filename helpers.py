@@ -3,6 +3,8 @@ import sys
 
 import torch
 from torch import nn, Tensor
+from network import NaiveNet, SharedWeightNet, BenchmarkNet
+import dlc_practical_prologue as prologue
 
 def create_dataloader(*tensors, batch_size = 10, shuffle = True):
     """Creates a PyTorch data loader from the given tensors"""
@@ -132,7 +134,8 @@ def grid_search(
     classes: Tensor,
     params: list,
     auxiliary_loss: bool = False,
-    folds: int = 4):
+    folds: int = 4,
+    verbose: bool = True):
     """
     :param model: the model
     :param inputs: input tensor of dimension (N, 2, 14, 14), N is the number of pairs
@@ -163,7 +166,8 @@ def grid_search(
                 lambda_= val['lambda_'],
                 batch_size= val['batch_size'],
                 nb_epochs = 25,
-                auxiliary_loss=auxiliary_loss)
+                auxiliary_loss=auxiliary_loss,
+                verbose=verbose)
 
             kfold_train_error.append(compute_accuracy(model, inputs[kfold_train_idx[i]], targets[kfold_train_idx[i]])[1])
             kfold_valid_error.append(compute_accuracy(model, inputs[kfold_valid_idx[i]], targets[kfold_valid_idx[i]])[1])
@@ -173,9 +177,49 @@ def grid_search(
 
     return train_error, valid_error
 
-#generation of the params sets
-#params=[]
-#
-#for lr in torch.logspace(start=-4, end=-1, steps=10):
-#    for batch_size in [25, 50, 125, 250]:
-#        params.append({'lr':lr, 'batch_size':batch_size, 'lambda_':0})
+def tune_hyperparameters(N=1000):
+
+    models = [NaiveNet(), SharedWeightNet(), SharedWeightNet(), SharedWeightNet(hidden_layers=2), BenchmarkNet(hidden_layers=2)]
+
+    params_without_auxi_loss=[]
+
+    for lr in torch.logspace(start=-4, end=-1, steps=10):
+        for batch_size in [25, 50, 125, 250]:
+            params_without_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':0})
+
+    params_with_auxi_loss=[]
+
+    for lr in torch.logspace(start=-4, end=-1, steps=10):
+        for batch_size in [25, 50, 125, 250]:
+            for lambda_ in torch.logspace(start=-2, end=-1, steps=10):
+                params_without_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':lambda_})
+
+    train_input, train_target, train_classes, \
+    test_input, test_target, test_classes = \
+    prologue.generate_pair_sets(N)
+
+    for m in models[:2]:
+        _, test = grid_search(
+                    m,
+                    inputs=train_input,
+                    targets=train_target,
+                    classes=train_classes,
+                    params=params_without_auxi_loss,
+                    auxiliary_loss=False,
+                    folds=4,
+                    verbose=False)
+
+        print(params_without_auxi_loss[torch.tensor(test, dtype=float).argmin()])
+
+    for m in models[2:]:
+        _, test = grid_search(
+                    m,
+                    inputs=train_input,
+                    targets=train_target,
+                    classes=train_classes,
+                    params=params_with_auxi_loss,
+                    auxiliary_loss=True,
+                    folds=4,
+                    verbose=False)
+
+        print(params_with_auxi_loss[torch.tensor(test, dtype=float).argmin()])
