@@ -4,7 +4,7 @@ from network import NaiveNet, SharedWeightNet, BenchmarkNet
 from helpers import train_model, compute_accuracy
 
 num_samples = 1000
-
+NUM_ITER = 3
 
 titles = [
     'Naive network, no weight sharing, 1 hidden layer',
@@ -35,7 +35,7 @@ with_aux_loss = [False, False, True, True, True]
 agg_train_results = {t:[] for t in titles}
 agg_test_results = {t:[] for t in titles}
 
-for i in range(10):
+for i in range(NUM_ITER):
     train_input, train_target, train_classes, \
     test_input, test_target, test_classes = prologue.generate_pair_sets(num_samples)
 
@@ -59,10 +59,13 @@ for i in range(10):
         agg_test_results[title].append(test_accuracy)
 
         
-        
+for t,res in agg_test_results.items():
+    print(t)
+    print(torch.mean(torch.Tensor(res)))
+    print(torch.mean(torch.Tensor(res)))                
 
-print(
-    'Training accuracy: {:.2f}%\nTest accuracy:     {:.2f}%\n'
-    .format(train_accuracy * 100, test_accuracy * 100)
-)
+#print(
+#    'Training accuracy: {:.2f}%\nTest accuracy:     {:.2f}%\n'
+#    .format(train_accuracy * 100, test_accuracy * 100)
+#)
 print('#######################\n')
