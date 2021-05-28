@@ -6,14 +6,15 @@ from network_helpers import block_cnn, block_digit_classifier, block_output, leq
 
 
 class Net(nn.Module):
-    def __init__(self, hidden_layers: int):
+    def __init__(self, hidden_layers: int, weight_sharing: bool = False):
         super().__init__()
         # CNN block
         self.cnn = block_cnn()
         
         # Classification blocks
         self.dc1 = block_digit_classifier(hidden_layers)
-        self.dc2 = block_digit_classifier(hidden_layers)
+        if not weight_sharing:
+            self.dc2 = block_digit_classifier(hidden_layers)
         
         # Output block
         self.out = block_output()
@@ -21,19 +22,21 @@ class Net(nn.Module):
     def forward(self, input_: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         raise NotImplementedError
 
-    def reset(self):
+    def reset_parameters(self):
         for layer in self.cnn:
             if type(layer) == nn.Conv2d:
                 layer.reset_parameters()
         for layer in self.dc1:
             if type(layer) == nn.Linear:
                 layer.reset_parameters()
-        for layer in self.dc2:
-            if type(layer) == nn.Linear:
-                layer.reset_parameters()
+        if hasattr(self, 'dc2')
+            for layer in self.dc2:
+                if type(layer) == nn.Linear:
+                    layer.reset_parameters()
         for layer in self.out:
             if type(layer) == nn.Linear:
                 layer.reset_parameters()
+
 
 class NaiveNet(Net):
     """Naive implementation without shared weights"""
@@ -58,7 +61,7 @@ class NaiveNet(Net):
 class SharedWeightNet(Net):
     """Network with shared weights"""
     def __init__(self, hidden_layers: int = 1):
-        super().__init__(hidden_layers)
+        super().__init__(hidden_layers, weight_sharing = True)
 
     def forward_one(self, input_: Tensor):
         """Forwards the one image of each pair through the CNN and classification blocks"""
