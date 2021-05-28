@@ -1,9 +1,10 @@
 import sys
 import dlc_practical_prologue as prologue
 from network import NaiveNet, SharedWeightNet, BenchmarkNet
-from helpers import train_model, compute_accuracy, bootstrapped_std
+from helpers import train_model, compute_accuracy, bootstrapping
 
 num_samples = 1000
+NUM_ITER = 3
 
 # We test five types of nets with appropriate hyper-parameters
 titles = [
@@ -32,37 +33,39 @@ hyper_parameters = [
 
 with_aux_loss = [False, False, True, True, True]
 
-for title, model, params, auxiliary_loss in zip(titles, models, hyper_parameters, with_aux_loss):
-    print(title)
+agg_train_results = {t:[] for t in titles}
+agg_test_results = {t:[] for t in titles}
 
-    for k, v in params.items():
-        print(f'{k}: {v}')
+for i in range(NUM_ITER):
+    train_input, train_target, train_classes, \
+    test_input, test_target, test_classes = prologue.generate_pair_sets(num_samples)
 
-    train_accuracy = []
-    test_accuracy = []
+    # We test five types of nets with appropriate hyper-parameters
 
-    for i in range(2):
+    for title, model, params, auxiliary_loss in zip(titles, models, hyper_parameters, with_aux_loss):
+        #print(title)
+        #for k, v in params.items():
+        #    print(f'{k}: {v}')
 
-        train_input, train_target, train_classes, \
-        test_input, test_target, test_classes = prologue.generate_pair_sets(num_samples)
-        
         # Train the model using the default number of epochs and batch size
         train_model(model, train_input, train_target, train_classes, **params, auxiliary_loss=auxiliary_loss)
-    
+
+        #sys.stdout.write('\rTraining complete!\n')
+
         # Compute train and test accuracy
-        train_accuracy.append(compute_accuracy(model, train_input, train_target))
-        test_accuracy.append(compute_accuracy(model, test_input, test_target))
+        train_accuracy = compute_accuracy(model, train_input, train_target)
+        test_accuracy = compute_accuracy(model, test_input, test_target)
+        
+        agg_train_results[title].append(train_accuracy)
+        agg_test_results[title].append(test_accuracy)
+    sys.stdout.write(f'\rRound {i} finished for all models!\n')
+        
+for t,res in agg_test_results.items():
+    print(t)
+    mean, std = bootstrapping(res, bootstrap=1000)
+    print('Test accuracy:     {:.2f}±{:.2f}%\n'
+    .format(mean * 100, std * 100)
+    )              
 
-    sys.stdout.write('\rTraining complete!\n')
 
-    #compute boostrapped std and average
-    train_avg, train_std = bootstrapped_std(train_accuracy,1000)
-    test_avg, test_std = bootstrapped_std(test_accuracy,1000)
-
-
-    print(
-        'Training accuracy: {:.2f}±{:.2f}%\nTest accuracy:     {:.2f}±{:.2f}%\n'
-        .format(train_avg * 100, train_std*100,
-                test_avg * 100, test_std*100)
-    )
-    print('#######################\n')
+print('#######################\n')

@@ -111,7 +111,7 @@ def compute_num_errors(model: nn.Module, inputs: Tensor, targets: Tensor) -> int
     num_errors = len(targets) - num_correct
     return num_errors
 
-def bootstrapped_std(values, bootstrap=500):
+def bootstrapping(values, bootstrap=500):
     #bootstrapping indices
     indices_values = torch.randint(len(values),(bootstrap,))
 
