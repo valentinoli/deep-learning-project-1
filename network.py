@@ -21,6 +21,19 @@ class Net(nn.Module):
     def forward(self, input_: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         raise NotImplementedError
 
+    def reset(self):
+        for layer in self.cnn:
+            if type(layer) == nn.Conv2d:
+                layer.reset_parameters()
+        for layer in self.dc1:
+            if type(layer) == nn.Linear:
+                layer.reset_parameters()
+        for layer in self.dc2:
+            if type(layer) == nn.Linear:
+                layer.reset_parameters()
+        for layer in self.out:
+            if type(layer) == nn.Linear:
+                layer.reset_parameters()
 
 class NaiveNet(Net):
     """Naive implementation without shared weights"""

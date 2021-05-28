@@ -148,7 +148,7 @@ def grid_search(
         kfold_valid_error = []
 
         for i in range(folds):
-            model.reset_parameters()
+            model.reset()
             train_model(
                 model,
                 inputs=inputs[kfold_train_idx[i]],
