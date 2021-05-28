@@ -190,52 +190,52 @@ def grid_search(
     return train_error, valid_error
 
 
-def tune_hyperparameters(num_samples = 1000, folds = 4):
-    model_constructors = [NaiveNet, SharedWeightNet, SharedWeightNet, SharedWeightNet, BenchmarkNet]
-    hidden_layers = [1, 1, 1, 2, 2]
-    with_aux_loss = [False, False, True, True, True]
+def tune_hyperparameters(N=1000, verbose=False, start=0, end=5):
+
+    model_constructors = [NaiveNet, SharedWeightNet, SharedWeightNet, SharedWeightNet, BenchmarkNet][start:end]
+    hidden_layers = [1,1,1,2,2][start:end]
+    with_aux_loss = [False, False, True, True, True][start:end]
+
+    batch_size = 100
     
-    learning_rates = torch.logspace(start=-4, end=-1, steps=5)
-    batch_sizes = [25, 50, 125]
-    lambdas = torch.logspace(start=-2, end=0, steps=6)[:-1]
-
-    params_without_auxi_loss = []
-    params_with_auxi_loss = []
-
-    for lr in learning_rates:
-        for batch_size in batch_sizes:
-            params_without_auxi_loss.append({'learning_rate': lr, 'batch_size': batch_size, 'lambda_': 0})
-            for lambda_ in lambdas:
-                params_with_auxi_loss.append({'learning_rate': lr, 'batch_size': batch_size, 'lambda_': lambda_})
-
-
-    inputs, targets, classes, _, _, _ = prologue.generate_pair_sets(num_samples)
     
-    params_dict = {
-        False: params_without_auxi_loss,
-        True: params_with_auxi_loss
-    }
+    params_without_auxi_loss=[]
 
+    for lr in [0.0002, 0.0005,0.0031,0.012,0.1]:
+        params_without_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':0})
+
+    params_with_auxi_loss=[]
+    for lr in [0.0002, 0.0005,0.0031,0.012,0.1]:
+        for lambda_ in [0, 0.115, 0.23, 0.345]:
+            params_with_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':lambda_})
+
+    train_input, train_target, train_classes, \
+    test_input, test_target, test_classes = \
+    prologue.generate_pair_sets(N)
+    
+    
+    params_iterate = [params_without_auxi_loss, params_without_auxi_loss, params_with_auxi_loss, params_with_auxi_loss, params_with_auxi_loss ][startfrom:]
     results = []
     test_error = []
+    train_error = []
 
-    for m, hl, aux in zip(model_constructors, hidden_layers, with_aux_loss):
-        params = params_dict[aux]
-        
-        _, test = grid_search(
-            m,
-            inputs,
-            targets,
-            classes,
-            hidden_layers=hl,
-            auxiliary_loss=aux,                
-            params=params,
-            folds=folds,
-            verbose=False
-        )
+    for (m, hl, aux, p) in zip(model_constructors, hidden_layers, with_aux_loss, params_iterate):
+        train, test = grid_search(
+                    m,
+                    inputs=train_input,
+                    targets=train_target,
+                    classes=train_classes,
+                    layers=hl,
+                    auxiliary_loss=aux,                
+                    params=p,
+                    folds=4,
+                    verbose=False)
         test_error.append(test)
-        best_params = params[torch.tensor(test, dtype=float).argmin()]
-        results.append(best_params)
-        print(best_params)
+        train_error.append(train)
+        results.append(p[torch.tensor(test, dtype=float).argmin()])
+        print(p[torch.tensor(test, dtype=float).argmin()])
+        if verbose:
+            print(test, m(hidden_layers=hl))
 
-    return results, test_error
+
+    return results, train_error, test_error, params_iterate
