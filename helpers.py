@@ -159,7 +159,7 @@ def grid_search(
         kfold_train_error = []
         kfold_valid_error = []
 
-        for i in range(folds):
+        for i in range(k):
             # create new model
             model = constructor(hidden_layers=hidden_layers)
             
@@ -190,31 +190,28 @@ def grid_search(
     return train_error, valid_error
 
 
-def tune_hyperparameters(num_samples = 1000, k = 4):
+def tune_hyperparameters(num_samples = 1000, k = 4, verbose = False, start = 0, end = 5):
     """
     Tune hyperparameters of all the models using grid search
     :param num_samples: number of samples
     :param k: number of folds for cross validation
     :returns: best parameters 
     """
-    model_constructors = [NaiveNet, SharedWeightNet, SharedWeightNet, SharedWeightNet, BenchmarkNet]
-    hidden_layers = [1, 1, 1, 2, 2]
-    with_aux_loss = [False, False, True, True, True]
+    model_constructors = [NaiveNet, SharedWeightNet, SharedWeightNet, SharedWeightNet, BenchmarkNet][start:end]
+    hidden_layers = [1, 1, 1, 2, 2][start:end]
+    with_aux_loss = [False, False, True, True, True][start:end]
     
-    learning_rates = torch.logspace(start=-4, end=-1, steps=5)
-    batch_sizes = [25, 50, 125]
-    lambdas = torch.logspace(start=-2, end=0, steps=6)[:-1]
+    learning_rates = [0.0002, 0.0005, 0.0031, 0.012, 0.1]
+    lambdas = [0, 0.115, 0.23, 0.345]
 
     params_without_auxi_loss = []
     params_with_auxi_loss = []
 
     for lr in learning_rates:
-        for batch_size in batch_sizes:
-            p = {'learning_rate': lr, 'batch_size': batch_size, 'lambda_': 0}
-            params_without_auxi_loss.append(p)
-            for lambda_ in lambdas:
-                params_with_auxi_loss.append({**p, 'lambda_': lambda_})
-
+        p = {'learning_rate': lr, 'batch_size': batch_size, 'lambda_': 0}
+        params_without_auxi_loss.append(p)
+        for lambda_ in lambdas:
+            params_with_auxi_loss.append({**p, 'lambda_': lambda_})
 
     inputs, targets, classes, _, _, _ = prologue.generate_pair_sets(num_samples)
     
@@ -225,11 +222,13 @@ def tune_hyperparameters(num_samples = 1000, k = 4):
 
     results = []
     test_error = []
-
+    params_iterate = []
+    train_error = []
+    
     for m, hl, aux in zip(model_constructors, hidden_layers, with_aux_loss):
         params = params_dict[aux]
         
-        _, test = grid_search(
+        train, test = grid_search(
             m,
             inputs,
             targets,
@@ -237,11 +236,18 @@ def tune_hyperparameters(num_samples = 1000, k = 4):
             hidden_layers=hl,
             auxiliary_loss=aux,                
             params=params,
-            folds=folds
+            k=k,
             verbose=False
         )
         test_error.append(test)
+        train_error.append(train)
+        params_iterate.append(params)
         best_params = params[torch.tensor(test, dtype=float).argmin()]
         results.append(best_params)
+        print(best_params)
+        
+        if verbose:
+            print(test, m(hidden_layers=hl))
 
-    return results, test_error
+
+    return results, train_error, test_error, params_iterate
