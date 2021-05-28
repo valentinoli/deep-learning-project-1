@@ -1,15 +1,9 @@
 import sys
 import dlc_practical_prologue as prologue
 from network import NaiveNet, SharedWeightNet, BenchmarkNet
-from helpers import train_model, compute_accuracy
+from helpers import train_model, compute_accuracy, bootstrapped_std
 
 num_samples = 1000
-
-# auxiliary loss parameter
-lambda_ = .23  
-
-train_input, train_target, train_classes, \
-test_input, test_target, test_classes = prologue.generate_pair_sets(num_samples)
 
 # We test five types of nets with appropriate hyper-parameters
 titles = [
@@ -40,20 +34,35 @@ with_aux_loss = [False, False, True, True, True]
 
 for title, model, params, auxiliary_loss in zip(titles, models, hyper_parameters, with_aux_loss):
     print(title)
+
     for k, v in params.items():
         print(f'{k}: {v}')
+
+    train_accuracy = []
+    test_accuracy = []
+
+    for i in range(2):
+
+        train_input, train_target, train_classes, \
+        test_input, test_target, test_classes = prologue.generate_pair_sets(num_samples)
+        
+        # Train the model using the default number of epochs and batch size
+        train_model(model, train_input, train_target, train_classes, **params, auxiliary_loss=auxiliary_loss)
     
-    # Train the model using the default number of epochs and batch size
-    train_model(model, train_input, train_target, train_classes, **params, auxiliary_loss=auxiliary_loss)
-    
+        # Compute train and test accuracy
+        train_accuracy.append(compute_accuracy(model, train_input, train_target))
+        test_accuracy.append(compute_accuracy(model, test_input, test_target))
+
     sys.stdout.write('\rTraining complete!\n')
 
-    # Compute train and test accuracy
-    train_accuracy = compute_accuracy(model, train_input, train_target)
-    test_accuracy = compute_accuracy(model, test_input, test_target)
+    #compute boostrapped std and average
+    train_avg, train_std = bootstrapped_std(train_accuracy,1000)
+    test_avg, test_std = bootstrapped_std(test_accuracy,1000)
+
 
     print(
-        'Training accuracy: {:.2f}%\nTest accuracy:     {:.2f}%\n'
-        .format(train_accuracy * 100, test_accuracy * 100)
+        'Training accuracy: {:.2f}±{:.2f}%\nTest accuracy:     {:.2f}±{:.2f}%\n'
+        .format(train_avg * 100, train_std*100,
+                test_avg * 100, test_std*100)
     )
     print('#######################\n')
