@@ -5,9 +5,6 @@ from helpers import train_model, compute_accuracy
 
 num_samples = 1000
 
-# auxiliary loss parameter
-lambda_ = .23  
-
 train_input, train_target, train_classes, \
 test_input, test_target, test_classes = prologue.generate_pair_sets(num_samples)
 
