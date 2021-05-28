@@ -1,6 +1,7 @@
 import sys
 from collections import defaultdict
 
+import torch
 import dlc_practical_prologue as prologue
 from network import NaiveNet, SharedWeightNet, BenchmarkNet
 from helpers import train_model, compute_accuracy, bootstrapping
@@ -9,6 +10,8 @@ num_samples = 1000
 
 # Change this parameter to control the number of rounds
 NUM_ROUNDS = 3
+PLOT = True
+BOOTSTRAP = False
 
 # We test five types of nets with appropriate hyper-parameters
 titles = [
@@ -68,6 +71,10 @@ for i in range(NUM_ROUNDS):
 
 print('\n\n#######################\n\n')
 
+
+
+display_vals = []
+
 for t, p in zip(titles, hyper_parameters):
     print('\n',t)
     for k, v in p.items():
@@ -75,9 +82,22 @@ for t, p in zip(titles, hyper_parameters):
 
     train_errors = agg_train_results[t]
     test_errors = agg_test_results[t]
+    if BOOTSTRAP: 
+        train_bootstrap = bootstrapping1(train_errors, bs=1000)
+        test_bootstrap = bootstrapping1(test_errors, bs=1000)
+    else:
+        train_bootstrap = torch.tensor(train_errors)
+        test_bootstrap = torch.tensor(test_errors)
     
-    train_mean, train_std = bootstrapping(train_errors, bootstrap=1000)
-    test_mean, test_std = bootstrapping(test_errors, bootstrap=1000)
+    display_vals.append(train_bootstrap)
+    display_vals.append(test_bootstrap)
     
-    print('Training accuracy: {:.2f}% ± {:.2f}%'.format(train_mean * 100, train_std * 100))
-    print('Test accuracy:     {:.2f}% ± {:.2f}%'.format(test_mean * 100, test_std * 100))
+    print('Training accuracy: {:.2f}% ± {:.2f}%'.format(train_bootstrap.mean() * 100, test_bootstrap.std() * 100))
+    print('Test accuracy:     {:.2f}% ± {:.2f}%'.format(test_bootstrap.mean() * 100, test_bootstrap.std() * 100))
+
+    
+# performance summary can be displayed
+# by adding 
+## from generate_plot import performance_plot
+#if PLOT:
+#    performance_plot(display_vals, NUM_ROUNDS, BOOTSTRAP)
