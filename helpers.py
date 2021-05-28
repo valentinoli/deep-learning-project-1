@@ -208,7 +208,7 @@ def tune_hyperparameters(num_samples = 1000, k = 4, verbose = False, start = 0, 
     params_with_auxi_loss = []
 
     for lr in learning_rates:
-        p = {'learning_rate': lr, 'batch_size': batch_size, 'lambda_': 0}
+        p = {'learning_rate': lr, 'batch_size': 100, 'lambda_': 0}
         params_without_auxi_loss.append(p)
         for lambda_ in lambdas:
             params_with_auxi_loss.append({**p, 'lambda_': lambda_})
