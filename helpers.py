@@ -111,28 +111,16 @@ def compute_num_errors(model: nn.Module, inputs: Tensor, targets: Tensor) -> int
     num_errors = len(targets) - num_correct
     return num_errors
 
-def bootstrapping(values, bootstrap=500): # deprecated
-    #bootstrapping indices
-    indices_values = torch.randint(len(values),(bootstrap,))
 
-    tmp = torch.tensor(values, dtype=torch.float)
-
-    return tmp.mean(), tmp[indices_values].std(), tmp
-
-
-def bootstrapping1(values, bs=500):
-    #bootstrapping indices
-    indices_values = torch.randint(len(values),(bs,))
-
-    tmp = []
-    for i in range(bs):
-        ind = indices_values[i]
-        b = values[ind]
-        tmp.append(b)
-    
-    tmp = torch.tensor(tmp)
-
-    return tmp
+def bootstrapping(values: list, size: int = 500) -> Tensor:
+    """
+    :param values: list of values to bootstrap resample from
+    :param size: number of bootstrap samples
+    :returns: tensor of resampled values
+    """
+    values = torch.tensor(values, dtype=torch.float)
+    bootstrap_sample_indices = torch.randint(len(values), (size,))
+    return values[bootstrap_sample_indices]
 
 
 def k_fold_split(num_samples: int, k: int = 4) -> tuple[Tensor]:

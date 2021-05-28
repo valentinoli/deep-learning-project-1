@@ -79,7 +79,7 @@ class SharedWeightNet(Net):
         # -> shared weight
         output1, output2 = self.forward_both(input_)
         
-        # Computes the final output by concatenating the intermediate outputs of each pair 
+        # Compute the final output by concatenating the intermediate outputs of each pair 
         output = self.out(torch.cat((output1, output2), 1))
         return output, output1, output2
 
