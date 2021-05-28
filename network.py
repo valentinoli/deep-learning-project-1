@@ -61,7 +61,7 @@ class SharedWeightNet(Net):
         """Forward pass of the input batch of image pairs"""
         # Forward both images in every pair through the first two blocks
         # -> shared weight
-        output1, output2 = forward_both(input_)
+        output1, output2 = self.forward_both(input_)
         
         # Computes the final output by concatenating the intermediate outputs of each pair 
         output = self.out(torch.cat((output1, output2), 1))
@@ -75,7 +75,7 @@ class BenchmarkNet(SharedWeightNet):
         
     def forward(self, input_):
         """Forward pass of the input batch of image pairs"""
-        output1, output2 = forward_both(input_)
+        output1, output2 = self.forward_both(input_)
         
         # Compute the output binary distribution by directly computing
         # if the most likely digit 1 is lesser or equal to the most likely digit 2

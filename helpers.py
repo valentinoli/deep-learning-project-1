@@ -192,11 +192,13 @@ def tune_hyperparameters(N=1000):
     for lr in torch.logspace(start=-4, end=-1, steps=10):
         for batch_size in [25, 50, 125, 250]:
             for lambda_ in torch.logspace(start=-2, end=-1, steps=10):
-                params_without_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':lambda_})
+                params_with_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':lambda_})
 
     train_input, train_target, train_classes, \
     test_input, test_target, test_classes = \
     prologue.generate_pair_sets(N)
+
+    results = []
 
     for m in models[:2]:
         _, test = grid_search(
@@ -209,6 +211,7 @@ def tune_hyperparameters(N=1000):
                     folds=4,
                     verbose=False)
 
+        results.append(params_without_auxi_loss[torch.tensor(test, dtype=float).argmin()])
         print(params_without_auxi_loss[torch.tensor(test, dtype=float).argmin()])
 
     for m in models[2:]:
@@ -222,4 +225,7 @@ def tune_hyperparameters(N=1000):
                     folds=4,
                     verbose=False)
 
+        results.append(params_with_auxi_loss[torch.tensor(test, dtype=float).argmin()])
         print(params_with_auxi_loss[torch.tensor(test, dtype=float).argmin()])
+
+    return results
