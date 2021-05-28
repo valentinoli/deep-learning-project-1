@@ -134,7 +134,7 @@ def grid_search(
     hidden_layers: int,
     auxiliary_loss: bool = False,
     epochs: int = 25,
-    folds: int = 4,
+    k: int = 4,
     verbose: bool = True,
 ) -> tuple[list, list]:
     """
@@ -146,11 +146,11 @@ def grid_search(
     :param hidden_layers: number of hidden layers in the model
     :param auxiliary_loss: whether to train with auxiliary loss
     :param epochs: number of epochs
-    :param folds: number of folds for the cross-validation
+    :param k: number of folds for the cross-validation
     :param verbose: switch for verbose output
     :returns: number of errors for each set of parameters
     """
-    kfolds = k_fold_split(len(inputs), folds=folds)
+    kfolds = k_fold_split(len(inputs), k=k)
 
     train_error = []
     valid_error = []
@@ -190,7 +190,13 @@ def grid_search(
     return train_error, valid_error
 
 
-def tune_hyperparameters(num_samples = 1000, folds = 4):
+def tune_hyperparameters(num_samples = 1000, k = 4):
+    """
+    Tune hyperparameters of all the models using grid search
+    :param num_samples: number of samples
+    :param k: number of folds for cross validation
+    :returns: best parameters 
+    """
     model_constructors = [NaiveNet, SharedWeightNet, SharedWeightNet, SharedWeightNet, BenchmarkNet]
     hidden_layers = [1, 1, 1, 2, 2]
     with_aux_loss = [False, False, True, True, True]
@@ -204,9 +210,10 @@ def tune_hyperparameters(num_samples = 1000, folds = 4):
 
     for lr in learning_rates:
         for batch_size in batch_sizes:
-            params_without_auxi_loss.append({'learning_rate': lr, 'batch_size': batch_size, 'lambda_': 0})
+            p = {'learning_rate': lr, 'batch_size': batch_size, 'lambda_': 0}
+            params_without_auxi_loss.append(p)
             for lambda_ in lambdas:
-                params_with_auxi_loss.append({'learning_rate': lr, 'batch_size': batch_size, 'lambda_': lambda_})
+                params_with_auxi_loss.append({**p, 'lambda_': lambda_})
 
 
     inputs, targets, classes, _, _, _ = prologue.generate_pair_sets(num_samples)
@@ -230,12 +237,11 @@ def tune_hyperparameters(num_samples = 1000, folds = 4):
             hidden_layers=hl,
             auxiliary_loss=aux,                
             params=params,
-            folds=folds,
+            folds=folds
             verbose=False
         )
         test_error.append(test)
         best_params = params[torch.tensor(test, dtype=float).argmin()]
         results.append(best_params)
-        print(best_params)
 
     return results, test_error
