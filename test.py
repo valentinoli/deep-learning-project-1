@@ -40,6 +40,8 @@ with_aux_loss = [False, False, True, True, True]
 
 for title, model, params, auxiliary_loss in zip(titles, models, hyper_parameters, with_aux_loss):
     print(title)
+    for k, v in params.items():
+        print(f'{k}: {v}')
     
     # Train the model using the default number of epochs and batch size
     train_model(model, train_input, train_target, train_classes, **params, auxiliary_loss=auxiliary_loss)
