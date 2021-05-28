@@ -7,10 +7,10 @@ def performance_plot(display_vals, NUM_ROUNDS, BOOTSTRAP):
         '(Naive(1)\ntest',
         'Shared\nWeightNet(1)\ntrain',
         'Shared\nWeightNet(1)\ntest',
-        'Shared\nWeightNet(1)'\ntrain',
-        'Shared\nWeightNet(1)'\ntest',
-        'Shared\nWeightNet(2)'\ntrain',
-        'Shared\nWeightNet(2)'\ntest',
+        'Shared\nWeightNet(1)\ntrain',
+        'Shared\nWeightNet(1)\ntest',
+        'Shared\nWeightNet(2)\ntrain',
+        'Shared\nWeightNet(2)\ntest',
         'Benchmark\ntrain',
         'Benchmark\ntest'
     ]
