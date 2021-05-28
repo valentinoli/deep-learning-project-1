@@ -29,7 +29,7 @@ class Net(nn.Module):
         for layer in self.dc1:
             if type(layer) == nn.Linear:
                 layer.reset_parameters()
-        if hasattr(self, 'dc2')
+        if hasattr(self, 'dc2'):
             for layer in self.dc2:
                 if type(layer) == nn.Linear:
                     layer.reset_parameters()
