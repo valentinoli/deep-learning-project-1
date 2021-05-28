@@ -12,7 +12,7 @@ def performance_plot(display_vals, NUM_ROUNDS, BOOTSTRAP):
         'Shared\nWeightNet(2)'\ntrain',
         'Shared\nWeightNet(2)'\ntest',
         'Benchmark\ntrain',
-        'Benchmark\ntest',
+        'Benchmark\ntest'
     ]
 
     fig = plt.figure(figsize=(15, 6), dpi=80)
