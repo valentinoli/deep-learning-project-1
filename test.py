@@ -9,7 +9,7 @@ from helpers import train_model, compute_accuracy, bootstrapping
 num_samples = 1000
 
 # Change this parameter to control the number of rounds
-NUM_ROUNDS = 3
+NUM_ROUNDS = 10
 PLOT = True
 BOOTSTRAP = False
 
