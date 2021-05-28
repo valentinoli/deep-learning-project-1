@@ -1,12 +1,12 @@
 import sys
+from collections import defaultdict
+
 import dlc_practical_prologue as prologue
 from network import NaiveNet, SharedWeightNet, BenchmarkNet
 from helpers import train_model, compute_accuracy
 
 num_samples = 1000
-
-train_input, train_target, train_classes, \
-test_input, test_target, test_classes = prologue.generate_pair_sets(num_samples)
+NUM_ITER = 3
 
 # We test five types of nets with appropriate hyper-parameters
 titles = [
@@ -35,22 +35,43 @@ hyper_parameters = [
 
 with_aux_loss = [False, False, True, True, True]
 
-for title, model, params, auxiliary_loss in zip(titles, models, hyper_parameters, with_aux_loss):
-    print(title)
-    for k, v in params.items():
-        print(f'{k}: {v}')
-    
-    # Train the model using the default number of epochs and batch size
-    train_model(model, train_input, train_target, train_classes, **params, auxiliary_loss=auxiliary_loss)
-    
-    sys.stdout.write('\rTraining complete!\n')
+agg_train_results = defaultdict(list)
+agg_test_results = defaultdict(list)
 
-    # Compute train and test accuracy
-    train_accuracy = compute_accuracy(model, train_input, train_target)
-    test_accuracy = compute_accuracy(model, test_input, test_target)
+for i in range(NUM_ITER):
+    print(f'*** Round {i+1} ***\n')
+    train_input, train_target, train_classes, \
+    test_input, test_target, test_classes = prologue.generate_pair_sets(num_samples)
 
+    for title, model, params, auxiliary_loss in zip(titles, models, hyper_parameters, with_aux_loss):
+        print(title)
+        for k, v in params.items():
+            print(f'{k}: {v}')
+
+        # Train the model using the default number of epochs and batch size
+        train_model(model, train_input, train_target, train_classes, **params, auxiliary_loss=auxiliary_loss)
+
+        sys.stdout.write('\rTraining complete!\n')
+        print('#######################\n')
+
+        # Compute train and test accuracy
+        train_accuracy = compute_accuracy(model, train_input, train_target)
+        test_accuracy = compute_accuracy(model, test_input, test_target)
+        
+        agg_train_results[title].append(train_accuracy)
+        agg_test_results[title].append(test_accuracy)
+
+
+for t in titles:
+    print(t)
+    train_res = agg_train_results[t]
+    test_res = agg_train_results[t]
+
+    train_accuracy = torch.Tensor(train_res).mean()
+    test_accuracy = torch.Tensor(test_res).mean()
     print(
-        'Training accuracy: {:.2f}%\nTest accuracy:     {:.2f}%\n'
-        .format(train_accuracy * 100, test_accuracy * 100)
+       'Average training accuracy: {:.2f}%\nAverage test accuracy:     {:.2f}%\n'
+       .format(train_accuracy * 100, test_accuracy * 100)
     )
+    
     print('#######################\n')
