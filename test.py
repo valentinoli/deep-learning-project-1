@@ -1,3 +1,4 @@
+import sys
 import dlc_practical_prologue as prologue
 from network import NaiveNet, SharedWeightNet, BenchmarkNet
 from helpers import train_model, compute_accuracy
@@ -42,6 +43,8 @@ for title, model, params, auxiliary_loss in zip(titles, models, hyper_parameters
     
     # Train the model using the default number of epochs and batch size
     train_model(model, train_input, train_target, train_classes, **params, auxiliary_loss=auxiliary_loss)
+    
+    sys.stdout.write('\rTraining complete!\n')
 
     # Compute train and test accuracy
     train_accuracy = compute_accuracy(model, train_input, train_target)

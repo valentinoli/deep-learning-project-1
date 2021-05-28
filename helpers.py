@@ -60,7 +60,6 @@ def train_model(
         if verbose:
             sys.stdout.write(f'\rEpoch {epoch+1}')
             sys.stdout.flush()
-    sys.stdout.write('\rTraining complete!\n')
 
 
 @torch.no_grad()
@@ -156,10 +155,12 @@ def grid_search(
     valid_error = []
     
     for param_dict in params:
+        print(f'Params {param_dict}')
         kfold_train_error = []
         kfold_valid_error = []
 
         for i in range(k):
+            print(f'Fold {i+1}')
             # create new model
             model = constructor(hidden_layers=hidden_layers)
             
@@ -195,7 +196,9 @@ def tune_hyperparameters(num_samples = 1000, k = 4, verbose = False, start = 0, 
     Tune hyperparameters of all the models using grid search
     :param num_samples: number of samples
     :param k: number of folds for cross validation
-    :returns: best parameters 
+    :param start: start model index
+    :param end: end model index (excluded)
+    :returns: best parameters, training and test errors, parameters
     """
     model_constructors = [NaiveNet, SharedWeightNet, SharedWeightNet, SharedWeightNet, BenchmarkNet][start:end]
     hidden_layers = [1, 1, 1, 2, 2][start:end]
@@ -208,13 +211,13 @@ def tune_hyperparameters(num_samples = 1000, k = 4, verbose = False, start = 0, 
     params_with_auxi_loss = []
 
     for lr in learning_rates:
-        p = {'learning_rate': lr, 'batch_size': 100, 'lambda_': 0}
+        p = {'learning_rate': lr, 'batch_size': 100}
         params_without_auxi_loss.append(p)
         for lambda_ in lambdas:
             params_with_auxi_loss.append({**p, 'lambda_': lambda_})
 
     inputs, targets, classes, _, _, _ = prologue.generate_pair_sets(num_samples)
-    
+
     params_dict = {
         False: params_without_auxi_loss,
         True: params_with_auxi_loss
@@ -226,6 +229,8 @@ def tune_hyperparameters(num_samples = 1000, k = 4, verbose = False, start = 0, 
     train_error = []
     
     for m, hl, aux in zip(model_constructors, hidden_layers, with_aux_loss):
+        print(f'Performing hyperparameter-tuning on {m.__name__} with {hl} hidden layers')
+        print(f'Auxiliary loss: {aux}')
         params = params_dict[aux]
         
         train, test = grid_search(
@@ -248,6 +253,5 @@ def tune_hyperparameters(num_samples = 1000, k = 4, verbose = False, start = 0, 
         
         if verbose:
             print(test, m(hidden_layers=hl))
-
 
     return results, train_error, test_error, params_iterate
