@@ -77,7 +77,8 @@ print('\n\n#######################\n\n')
 display_vals = []
 
 for t, p in zip(titles, hyper_parameters):
-    print('\n',t)
+    print()
+    print(t)
     for k, v in p.items():
         print(f'{k}: {v}')
 
