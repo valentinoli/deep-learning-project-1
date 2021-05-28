@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from torch import nn, tensor, float
 
 """Layer helpers"""
@@ -43,7 +45,7 @@ def block_cnn():
     )
 
 
-def block_digit_classifier(hidden_layers):
+def block_digit_classifier(hidden_layers: int):
     """
     Returns a fully-connected block for MNIST digit classification
     input units: 64 * 3 * 3 = 576
