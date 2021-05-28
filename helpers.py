@@ -21,7 +21,7 @@ def train_model(
     learning_rate: float = 1e-2,
     lambda_: float = 0.1,
     batch_size: int = 100,
-    nb_epochs: int = 25,
+    epochs: int = 25,
     auxiliary_loss: bool = False,
     verbose: bool = True
 ):
@@ -37,7 +37,7 @@ def train_model(
     # SGD optimizer
     optim = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
 
-    for epoch in range(nb_epochs):
+    for epoch in range(epochs):
         for inputs_, targets_, classes_ in loader:
             # Forward pass
             # -> returns the binary output as well as 10 class predictions for each image
@@ -63,7 +63,7 @@ def train_model(
     sys.stdout.write('\rTraining complete!\n')
 
 
-            
+@torch.no_grad()
 def predict(model: nn.Module, inputs: Tensor) -> Tensor:
     """
     :param model: the model
@@ -80,140 +80,162 @@ def predict(model: nn.Module, inputs: Tensor) -> Tensor:
     return predictions
 
 
-def compute_accuracy(model: nn.Module, inputs: Tensor, targets: Tensor):
+def compute_num_correct(predictions: Tensor, targets: Tensor) -> int:
+    """
+    :param predictions: see predict() return value
+    :param targets: ground truth target values
+    :returns: number of correct predictions
+    """
+    return (predictions == targets).sum()
+
+
+def compute_accuracy(model: nn.Module, inputs: Tensor, targets: Tensor) -> float:
     """
     :param model: the model
     :param inputs: input tensor of dimension (N, 2, 14, 14), N is the number of pairs
-    :param labels: ground truth tensor of dimension N
-    :returns: total accuracy along with correctness tensor and predictions
+    :param targets: ground truth tensor of dimension N
+    :returns: total accuracy
     """
-    predictions = predict(model, inputs)
-    correct_class = predictions == targets  # -> boolean tensor
-    num_correct = correct_class.sum()
-    num_errors = len(targets) - num_correct
+    num_correct = compute_num_correct(predict(model, inputs), targets)
     accuracy = num_correct / len(targets)
-    return accuracy, num_errors
+    return accuracy
 
 
-def k_fold_split(inputs: Tensors, folds: int = 4):
+def compute_num_errors(model: nn.Module, inputs: Tensor, targets: Tensor) -> int:
     """
+    :param model: the model
     :param inputs: input tensor of dimension (N, 2, 14, 14), N is the number of pairs
-    :param folds: number of inputs split for cross-validation
-    :returns: indices of the entries corresponding to each fold
+    :param targets: ground truth tensor of dimension N
+    :returns: number of incorrect predictions
     """
-
-    shuffle_indices = torch.randperm(len(inputs))
-    split_indices = torch.split(shuffle_indices, int(torch.tensor(len(inputs) / folds).item()))
-
-    kfold_train = []
-    kfold_valid = []
-
-    for i in range(folds):
-        kfold_train_indices = torch.cat(split_indices[0:i] + split_indices[i+1:])
-        kfold_validation_indices = split_indices[i]
-
-        kfold_train.append(kfold_train_indices)
-        kfold_valid.append(kfold_validation_indices)
-
-    return kfold_train, kfold_valid
+    num_correct = compute_num_correct(predict(model, inputs), targets)
+    num_errors = len(targets) - num_correct
+    return num_errors
 
 
+def k_fold_split(num_samples: int, k: int = 4) -> tuple[Tensor]:
+    """
+    :param num_samples: number of samples
+    :param k: number of folds to split the dataset for cross-validation
+    :returns: k folds of indices
+    """
+    fold_size = int(num_samples / k)
+    indices_shuffled = torch.randperm(num_samples)
+    indices_split = torch.split(indices_shuffled, fold_size)
+    return indices_split
 
 
 def grid_search(
-    constructor: nn.Module,
+    constructor,
     inputs: Tensor,
     targets: Tensor,
     classes: Tensor,
-    layers: int,
-    auxiliary_loss: bool,
-    params: list,
+    params: list[dict],
+    hidden_layers: int,
+    auxiliary_loss: bool = False,
+    epochs: int = 25,
     folds: int = 4,
-    verbose: bool = True):
+    verbose: bool = True,
+) -> tuple[list, list]:
     """
     :param model: the model
     :param inputs: input tensor of dimension (N, 2, 14, 14), N is the number of pairs
     :param labels: ground truth tensor of dimension N
     :param classes: inputs classes tensor of dimensions (N, 2)
-    :param parems: set of hyper-parameters in a dictionnary
-    :param folds: number of inputs split for cross-validation
+    :param params: set of combination of hyper-parameters
+    :param hidden_layers: number of hidden layers in the model
+    :param auxiliary_loss: whether to train with auxiliary loss
+    :param epochs: number of epochs
+    :param folds: number of folds for the cross-validation
+    :param verbose: switch for verbose output
     :returns: number of errors for each set of parameters
     """
-
-    kfold_train_idx, kfold_valid_idx = k_fold_split(inputs, folds)
+    kfolds = k_fold_split(len(inputs), folds=folds)
 
     train_error = []
     valid_error = []
     
-    for val in params:
-
+    for param_dict in params:
         kfold_train_error = []
         kfold_valid_error = []
 
         for i in range(folds):
-            model = constructor(hidden_layers=layers)
+            # create new model
+            model = constructor(hidden_layers=hidden_layers)
+            
+            # compute train indices and validation indices
+            train_idx = torch.cat(kfolds[:i] + kfolds[i+1:])
+            valid_idx = kfolds[i]
+            
+            # train the model on the train set
             train_model(
                 model,
-                inputs=inputs[kfold_train_idx[i]],
-                targets=targets[kfold_train_idx[i]],
-                classes=classes[kfold_train_idx[i]],
-                learning_rate= val['lr'],
-                lambda_= val['lambda_'],
-                batch_size= val['batch_size'],
-                nb_epochs = 25,
+                inputs=inputs[train_idx],
+                targets=targets[train_idx],
+                classes=classes[train_idx],
+                epochs=epochs,
                 auxiliary_loss=auxiliary_loss,
-                verbose=verbose)
+                verbose=verbose,
+                **param_dict
+            )
+            
+            # keep track of validation errors in each fold
+            kfold_train_error.append(compute_num_errors(model, inputs[train_idx], targets[train_idx]))
+            kfold_valid_error.append(compute_num_errors(model, inputs[valid_idx], targets[valid_idx]))
 
-            kfold_train_error.append(compute_accuracy(model, inputs[kfold_train_idx[i]], targets[kfold_train_idx[i]])[1])
-            kfold_valid_error.append(compute_accuracy(model, inputs[kfold_valid_idx[i]], targets[kfold_valid_idx[i]])[1])
-
-        train_error.append(torch.tensor(kfold_train_error ,dtype=torch.float).mean())
-        valid_error.append(torch.tensor(kfold_valid_error ,dtype=torch.float).mean())
+        # compute average error over the folds
+        train_error.append(torch.tensor(kfold_train_error, dtype=torch.float).mean())
+        valid_error.append(torch.tensor(kfold_valid_error, dtype=torch.float).mean())
 
     return train_error, valid_error
 
-def tune_hyperparameters(N=1000):
 
+def tune_hyperparameters(num_samples = 1000, folds = 4):
     model_constructors = [NaiveNet, SharedWeightNet, SharedWeightNet, SharedWeightNet, BenchmarkNet]
-    hidden_layers = [1,1,1,2,2]
+    hidden_layers = [1, 1, 1, 2, 2]
     with_aux_loss = [False, False, True, True, True]
-
-    params_without_auxi_loss=[]
-
-    for lr in torch.logspace(start=-4, end=-1, steps=5):
-        for batch_size in [25, 50, 125]:
-            params_without_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':0})
-
-    params_with_auxi_loss=[]
-
-    for lr in torch.logspace(start=-4, end=-1, steps=5):
-        for batch_size in [25, 50, 125]:
-            for lambda_ in torch.logspace(start=-2, end=0, steps=6)[:-1]:
-                params_with_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':lambda_})
-
-    train_input, train_target, train_classes, \
-    test_input, test_target, test_classes = \
-    prologue.generate_pair_sets(N)
     
+    learning_rates = torch.logspace(start=-4, end=-1, steps=5)
+    batch_sizes = [25, 50, 125]
+    lambdas = torch.logspace(start=-2, end=0, steps=6)[:-1]
+
+    params_without_auxi_loss = []
+    params_with_auxi_loss = []
+
+    for lr in learning_rates:
+        for batch_size in batch_sizes:
+            params_without_auxi_loss.append({'learning_rate': lr, 'batch_size': batch_size, 'lambda_': 0})
+            for lambda_ in lambdas:
+                params_with_auxi_loss.append({'learning_rate': lr, 'batch_size': batch_size, 'lambda_': lambda_})
+
+
+    inputs, targets, classes, _, _, _ = prologue.generate_pair_sets(num_samples)
     
-    params_iterate = [params_without_auxi_loss, params_without_auxi_loss, params_with_auxi_loss, params_with_auxi_loss, params_with_auxi_loss ]
+    params_dict = {
+        False: params_without_auxi_loss,
+        True: params_with_auxi_loss
+    }
+
     results = []
     test_error = []
 
-    for (m, hl, aux, p) in zip(model_constructors, hidden_layers, with_aux_loss, params_iterate):
+    for m, hl, aux in zip(model_constructors, hidden_layers, with_aux_loss):
+        params = params_dict[aux]
+        
         _, test = grid_search(
-                    m,
-                    inputs=train_input,
-                    targets=train_target,
-                    classes=train_classes,
-                    layers=hl,
-                    auxiliary_loss=aux,                
-                    params=p,
-                    folds=4,
-                    verbose=False)
+            m,
+            inputs,
+            targets,
+            classes,
+            hidden_layers=hl,
+            auxiliary_loss=aux,                
+            params=params,
+            folds=folds,
+            verbose=False
+        )
         test_error.append(test)
-        results.append(p[torch.tensor(test, dtype=float).argmin()])
-        print(p[torch.tensor(test, dtype=float).argmin()])
-
+        best_params = params[torch.tensor(test, dtype=float).argmin()]
+        results.append(best_params)
+        print(best_params)
 
     return results, test_error
