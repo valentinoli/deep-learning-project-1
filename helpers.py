@@ -105,9 +105,6 @@ def k_fold_split(inputs: Tensors, folds: int = 4):
     shuffle_indices = torch.randperm(len(inputs))
     split_indices = torch.split(shuffle_indices, int(torch.tensor(len(inputs) / folds).item()))
 
-    #kfold_train_dict = {}
-    #kfold_validation_dict = {}
-
     kfold_train = []
     kfold_valid = []
 
@@ -117,12 +114,6 @@ def k_fold_split(inputs: Tensors, folds: int = 4):
 
         kfold_train.append(kfold_train_indices)
         kfold_valid.append(kfold_validation_indices)
-
-    
-    #    kfold_train_dict[i] = {'input':inputs[kfold_train_indices],'target':targets[kfold_train_indices],'classes':classes[kfold_train_indices]}
-    #    kfold_validation_dict[i] = {'input':inputs[kfold_validation_indices],'target':targets[kfold_validation_indices],'classes':classes[kfold_validation_indices]}
-
-    #return kfold_train_dict, kfold_validation_dict
 
     return kfold_train, kfold_valid
 
@@ -157,6 +148,7 @@ def grid_search(
         kfold_valid_error = []
 
         for i in range(folds):
+            model.reset_parameters()
             train_model(
                 model,
                 inputs=inputs[kfold_train_idx[i]],
@@ -184,14 +176,14 @@ def tune_hyperparameters(N=1000):
     params_without_auxi_loss=[]
 
     for lr in torch.logspace(start=-4, end=-1, steps=10):
-        for batch_size in [25, 50, 125, 250]:
+        for batch_size in [25, 50, 125]:
             params_without_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':0})
 
     params_with_auxi_loss=[]
 
-    for lr in torch.logspace(start=-4, end=-1, steps=10):
-        for batch_size in [25, 50, 125, 250]:
-            for lambda_ in torch.logspace(start=-2, end=-1, steps=10):
+    for lr in torch.logspace(start=-4, end=-1, steps=8):
+        for batch_size in [25, 50, 125]:
+            for lambda_ in torch.logspace(start=-2, end=0, steps=8)[:-1]:
                 params_with_auxi_loss.append({'lr':lr, 'batch_size':batch_size, 'lambda_':lambda_})
 
     train_input, train_target, train_classes, \
@@ -199,6 +191,7 @@ def tune_hyperparameters(N=1000):
     prologue.generate_pair_sets(N)
 
     results = []
+    test_error = []
 
     for m in models[:2]:
         _, test = grid_search(
@@ -225,7 +218,8 @@ def tune_hyperparameters(N=1000):
                     folds=4,
                     verbose=False)
 
+        test_error.append(test)
         results.append(params_with_auxi_loss[torch.tensor(test, dtype=float).argmin()])
         print(params_with_auxi_loss[torch.tensor(test, dtype=float).argmin()])
 
-    return results
+    return results, test_error
