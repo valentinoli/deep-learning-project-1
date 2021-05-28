@@ -20,8 +20,8 @@ titles = [
 ]
 
 hyper_parameters = [
-    {'learning_rate': 0.0002, 'batch_size': 50, 'lambda_': 0},
-    {'learning_rate': 0.0005, 'batch_size': 50, 'lambda_': 0},
+    {'learning_rate': 0.0002, 'batch_size': 100, 'lambda_': 0},
+    {'learning_rate': 0.0005, 'batch_size': 100, 'lambda_': 0},
     {'learning_rate': 3.1e-3, 'batch_size': 100, 'lambda_': 0.23},
     {'learning_rate': 1.2e-2, 'batch_size': 100, 'lambda_': 0.23},
     {'learning_rate': 1.2e-2, 'batch_size': 100, 'lambda_': 0.23}
